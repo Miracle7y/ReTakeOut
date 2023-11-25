@@ -23,6 +23,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * 菜品管理
+ */
 @Slf4j
 @RestController
 @RequestMapping("/dish")

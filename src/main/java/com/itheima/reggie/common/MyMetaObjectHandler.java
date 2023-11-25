@@ -14,7 +14,6 @@ import java.time.LocalDateTime;
 @Component
 public class MyMetaObjectHandler implements MetaObjectHandler {
 
-
     /**
      * 插入操作自动填充
      * @param metaObject
@@ -22,7 +21,7 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
     @Override
     public void insertFill(MetaObject metaObject) {
 
-        log.info("新增时，自动填充公共字段");
+        log.info("插入时，自动填充公共字段");
 
         long id = BaseContext.getCurrentId();
 

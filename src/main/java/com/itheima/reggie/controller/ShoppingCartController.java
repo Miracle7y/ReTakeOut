@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * 购物车管理
+ */
 @Slf4j
 @RestController
 @RequestMapping("/shoppingCart")

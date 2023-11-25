@@ -18,6 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.servlet.http.HttpSession;
 import java.util.Map;
 
+/**
+ * 用户管理
+ */
 @Slf4j
 @RestController
 @RequestMapping("/user")

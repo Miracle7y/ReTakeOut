@@ -13,6 +13,9 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
+/**
+ * 分类管理
+ */
 @Slf4j
 @RestController
 @RequestMapping("/category")
