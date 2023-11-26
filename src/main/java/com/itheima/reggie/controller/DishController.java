@@ -16,10 +16,12 @@ import com.itheima.reggie.service.SetmealService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -37,6 +39,8 @@ public class DishController {
     private DishFlavorService dishFlavorService;
     @Autowired
     private CategoryService categoryService;
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     /**
      * 新增菜品
@@ -46,6 +50,9 @@ public class DishController {
     @PostMapping
     public Result<String> save(@RequestBody DishDto dishDto){
         log.info("添加菜品内容：{}",dishDto.toString());
+        //清理redis中的缓存数据
+        String key="dish_"+dishDto.getCategoryId()+"_1";
+        redisTemplate.delete(key);
         dishService.saveWithFlavor(dishDto);
         return Result.success("添加成功");
     }
@@ -121,6 +128,9 @@ public class DishController {
     @PutMapping
     public Result<String> update(@RequestBody DishDto dishDto){
         log.info("修改菜品内容：{}",dishDto.toString());
+        //清理redis中的缓存数据
+        String key="dish_"+dishDto.getCategoryId()+"_1";
+        redisTemplate.delete(key);
         dishService.updateWithFlavor(dishDto);
 
         return Result.success("修改成功");
@@ -133,6 +143,7 @@ public class DishController {
      */
     @DeleteMapping
     public Result<String> delete(Long[] ids){
+
         dishService.deleteWithFlavor(ids);
         return Result.success("删除成功");
     }
@@ -146,7 +157,6 @@ public class DishController {
     @PostMapping("/status/{status}")
     public Result<String> statusUpdate(@PathVariable Integer status,Long[] ids){
         List<Long> list = Arrays.asList(ids);
-
         //构造条件构造器
         LambdaUpdateWrapper<Dish> updateWrapper = new LambdaUpdateWrapper<>();
         //添加过滤条件
@@ -184,35 +194,45 @@ public class DishController {
      */
     @GetMapping("/list")
     public Result<List<DishDto>> list(Dish dish){
+        List<DishDto> dishDtoList=null;
+
+        String key="dish_"+dish.getCategoryId()+"_"+dish.getStatus();
+        //从Redis中获取菜品缓存数据
+        dishDtoList = (List<DishDto>) redisTemplate.opsForValue().get(key);
+        if (dishDtoList !=null){
+            //如果Redis中存在对应缓存数据，直接将数据返回
+            return Result.success(dishDtoList);
+        }
+        //如果缓存不存在，则在数据库中查找数据，并将数据返回前端及加入Redis缓存管理
         //构造条件构造器
         LambdaQueryWrapper<Dish> queryWrapper=new LambdaQueryWrapper<>();
         //添加条件
         queryWrapper.eq(dish.getCategoryId() !=null,Dish::getCategoryId,dish.getCategoryId())
                 .eq(Dish::getStatus,1);
         queryWrapper.orderByAsc(Dish::getSort).orderByDesc(Dish::getUpdateTime);
-        //查询
+        //查询到符合条件的Dish对象集合
         List<Dish> list = dishService.list(queryWrapper);
-
-        List<DishDto> dishDtoList = list.stream().map(item -> {
+        //获取菜品类别名和菜品口味集合，赋值并获取DishDto对象集合
+        dishDtoList = list.stream().map(item -> {
             DishDto dishDto = new DishDto();
             BeanUtils.copyProperties(item, dishDto);
-
+            //根据菜品类别id获取菜品类别名，为DishDto赋值
             Long categoryId = item.getCategoryId();
             Category category = categoryService.getById(categoryId);
             if (category != null) {
                 String name = category.getName();
                 dishDto.setCategoryName(name);
             }
-
+            //根据菜品id，从口味表中获取对应菜品口味集合，为DishDto赋值
             Long dishId = item.getId();
-
             LambdaQueryWrapper<DishFlavor> flavorLambdaQueryWrapper=new LambdaQueryWrapper<>();
             flavorLambdaQueryWrapper.eq(DishFlavor::getDishId,dishId);
             List<DishFlavor> flavorList = dishFlavorService.list(flavorLambdaQueryWrapper);
             dishDto.setFlavors(flavorList);
             return dishDto;
         }).collect(Collectors.toList());
-
+        //将数据加入Redis缓存管理并返回前端
+        redisTemplate.opsForValue().set(key,dishDtoList,60, TimeUnit.MINUTES);//设置保存缓存有效时间1小时
         return Result.success(dishDtoList);
 
     }
