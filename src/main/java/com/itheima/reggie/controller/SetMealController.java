@@ -13,6 +13,8 @@ import com.itheima.reggie.service.SetmealService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -85,6 +87,7 @@ public class SetMealController {
      * @return
      */
     @PostMapping
+    @CacheEvict(value = "SetmealCache" ,allEntries = true)
     public Result<String> save(@RequestBody SetmealDto setmealDto){
         log.info("新增套餐");
         setmealService.saveWithDish(setmealDto);
@@ -97,6 +100,7 @@ public class SetMealController {
      * @return
      */
     @DeleteMapping
+    @CacheEvict(value = "SetmealCache" ,allEntries = true)
     public Result<String> deleteWithDish(Long[] ids){
         log.info("删除套餐");
         setmealService.deleteWithDish(ids);
@@ -122,6 +126,7 @@ public class SetMealController {
      * @return
      */
     @PutMapping
+    @CacheEvict(value = "SetmealCache" ,allEntries = true)
     public Result<String> update(@RequestBody SetmealDto setmealDto){
         setmealService.updateWithDish(setmealDto);
         return Result.success("修改成功");
@@ -134,6 +139,7 @@ public class SetMealController {
      * @return
      */
     @PostMapping("/status/{status}")
+    @CacheEvict(value = "SetmealCache" ,allEntries = true)
     public Result<String> statusUpdate(@PathVariable Integer status,Long[] ids){
         LambdaUpdateWrapper<Setmeal> updateWrapper=new LambdaUpdateWrapper<>();
         updateWrapper.in(Setmeal::getId,ids).set(Setmeal::getStatus,status);
@@ -147,6 +153,7 @@ public class SetMealController {
      * @return
      */
     @GetMapping("/list")
+    @Cacheable(value = "SetmealCache" ,key = "#setmeal.categoryId+'_'+#setmeal.status")
     public Result<List<Setmeal>> list(Setmeal setmeal){
         log.info(setmeal.toString());
         LambdaQueryWrapper<Setmeal> queryWrapper=new LambdaQueryWrapper<>();
